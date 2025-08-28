@@ -1,0 +1,17 @@
+# Rust
+target/
+Cargo.lock
+
+# OS
+.DS_Store
+*~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local test files
+*.test
+*.tmp

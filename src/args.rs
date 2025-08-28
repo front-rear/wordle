@@ -33,6 +33,9 @@ pub struct Args {
 
     #[arg(short = 'c', long)]
     pub config: Option<String>,
+
+    #[arg(long)]
+    pub tui: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,4 +49,5 @@ pub struct ConfigFile {
     pub acceptable_set: Option<String>,
     pub state: Option<String>,
     pub word: Option<String>,
+    pub tui: Option<bool>,
 }

@@ -4,6 +4,7 @@ mod builtin_words;
 mod game_logic;
 mod game_state;
 mod status;
+mod tui;
 mod ui;
 mod word_sets;
 
@@ -105,6 +106,10 @@ fn merge_config(args: &mut Args, config: &ConfigFile) {
     if config.word.is_some() && args.word.is_none() {
         args.word = config.word.clone();
     }
+
+    if config.tui.is_some() && !args.tui {
+        args.tui = config.tui.unwrap();
+    }
 }
 
 fn main() -> io::Result<()> {
@@ -122,6 +127,12 @@ fn main() -> io::Result<()> {
                 std::process::exit(1);
             }
         }
+    }
+
+    // 参数冲突检查
+    if args.tui && args.random {
+        eprintln!("错误：TUI模式不支持随机模式，请去掉 --random 参数");
+        std::process::exit(1);
     }
 
     // 加载游戏状态（如果指定了状态文件）
@@ -325,7 +336,31 @@ fn main() -> io::Result<()> {
         let mut attempt = 0;
         let mut won = false;
 
-        // 单局游戏循环
+        // TUI模式分支
+        if args.tui {
+            match tui::run_tui(
+                answer.clone(),
+                args.difficult,
+                finals_set.clone(),
+                acceptables_set.clone(),
+            ) {
+                Ok((tui_won, tui_attempts, tui_guesses)) => {
+                    won = tui_won;
+                    attempt = tui_attempts;
+                    guesses = tui_guesses;
+                    
+                    // 为了统计需要重构feedbacks
+                    feedbacks = guesses.iter().map(|guess| {
+                        game_logic::compute_feedback(guess, &answer)
+                    }).collect();
+                }
+                Err(e) => {
+                    eprintln!("TUI 错误: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            // 原有的命令行游戏循环
         'game: while attempt < 6 {
             if is_interactive {
                 println!(
@@ -395,6 +430,7 @@ fn main() -> io::Result<()> {
                 break 'game;
             }
         }
+        } // 结束TUI/CLI模式分支
 
         // 游戏结束处理
         if !won {
@@ -421,7 +457,7 @@ fn main() -> io::Result<()> {
         }
 
         // 更新统计数据
-        stats.add_game(won, attempt, &guesses);
+        stats.add_game(won, attempt as u32, &guesses);
 
         // 显示统计数据（包含所有游戏）
         if args.stats {
